@@ -22,4 +22,11 @@ interface IApiService {
        @Query("units") units: String = "metric",
        @Query("appid") appId: String = openWeatherMapApiKey
    ): ForecastResult
+
+    @GET("weather")
+    suspend fun getCityWeather(
+        @Query("q") city: String = "",
+        @Query("units") units: String = "metric",
+        @Query("appid") appId: String = openWeatherMapApiKey
+    ): WeatherResult
 }

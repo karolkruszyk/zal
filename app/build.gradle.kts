@@ -75,4 +75,6 @@ dependencies {
     implementation("com.google.accompanist:accompanist-systemuicontroller:0.33.1-alpha")
     implementation("com.github.Gurupreet:FontAwesomeCompose:1.0.0")
     implementation("androidx.navigation:navigation-compose:2.7.5")
+    implementation("androidx.activity:activity-ktx:1.8.1")
+    implementation("androidx.compose.material:material:1.5.4")
 }

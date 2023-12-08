@@ -1,70 +1,39 @@
 package pl.kruszyk.weather
 
-import WeatherSection
 import android.annotation.SuppressLint
-import android.content.Context
-import android.content.pm.PackageManager
-import android.location.Location
 import android.os.Bundle
 import android.os.Looper
-import android.widget.Toast
 import androidx.activity.ComponentActivity
-import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
-import androidx.activity.result.contract.ActivityResultContract
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.FloatingActionButton
+import androidx.compose.foundation.layout.RowScope
+import androidx.compose.material.BottomNavigation
+import androidx.compose.material.BottomNavigationItem
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.layout
-import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp
-import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModelProvider
-import com.google.accompanist.systemuicontroller.rememberSystemUiController
+import androidx.navigation.NavDestination
+import androidx.navigation.NavDestination.Companion.hierarchy
+import androidx.navigation.NavHostController
+import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.compose.rememberNavController
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationCallback
 import com.google.android.gms.location.LocationRequest
 import com.google.android.gms.location.LocationResult
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
-import kotlinx.coroutines.coroutineScope
-import pl.kruszyk.weather.constant.Const.Companion.colorBg1
-import pl.kruszyk.weather.constant.Const.Companion.colorBg2
-import pl.kruszyk.weather.constant.Const.Companion.permissions
 import pl.kruszyk.weather.model.MyLatLng
-import pl.kruszyk.weather.model.forecast.ForecastResult
-import pl.kruszyk.weather.model.weather.WeatherResult
 import pl.kruszyk.weather.ui.theme.WeatherTheme
-import pl.kruszyk.weather.view.ForecastSection
+import pl.kruszyk.weather.view.BottomBar
+import pl.kruszyk.weather.utils.BottomNavGraph
 import pl.kruszyk.weather.viewmodel.MainViewModel
 import pl.kruszyk.weather.viewmodel.STATE
 
@@ -76,7 +45,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
-        if (locationRequired) startLocationUpdate();
+        if (locationRequired) startLocationUpdate()
     }
 
     override fun onPause() {
@@ -103,6 +72,8 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
+    @OptIn(ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         initLocationClient()
@@ -122,17 +93,56 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
-            WeatherTheme {
-                // A surface container using the 'background' color from the theme
-                Surface(
-                    modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colorScheme.background
-                ) {
-                    LocationScreen(this@MainActivity, currentLocation)
 
+
+            WeatherTheme {
+                val navController = rememberNavController()
+                Scaffold(
+                        bottomBar = {
+                            NavBar(navController)
+                    }
+                ) {
+                    BottomNavGraph(
+                        navController, currentLocation, mainViewModel, ::fetchWeatherInformation, locationRequired, ::startLocationUpdate
+                    )
                 }
             }
         }
+    }
+
+    @Composable
+    fun NavBar(navController: NavHostController) {
+        val screens = listOf(BottomBar.Search, BottomBar.CurrentLocation, BottomBar.Forecast)
+        val navBackStackEntry by navController.currentBackStackEntryAsState()
+        val currentDestination = navBackStackEntry?.destination
+
+        BottomNavigation(backgroundColor = Color(0xFF333639)){
+            screens.forEach{
+                screen ->
+                AddItem(screen = screen, currentDestination = currentDestination, navController = navController)
+            }
+        }
+    }
+
+    @Composable
+    fun RowScope.AddItem(
+        screen: BottomBar,
+        currentDestination: NavDestination?,
+        navController: NavHostController
+    ) {
+        BottomNavigationItem(
+            label = {Text(text = screen.title)},
+            icon = {
+                Icon(imageVector = screen.icon,
+                contentDescription = "NavigationIcon", )
+            },
+            selected = currentDestination?.hierarchy?.any {
+                it.route == screen.route
+            } == true,
+            onClick = {
+                navController.navigate(screen.route)
+            }
+        )
     }
 
     private fun fetchWeatherInformation(mainViewModel: MainViewModel, currentLocation: MyLatLng) {
@@ -146,128 +156,6 @@ class MainActivity : ComponentActivity() {
         mainViewModel = ViewModelProvider(this@MainActivity)[MainViewModel::class.java]
     }
 
-    @Composable
-    private fun LocationScreen(context: Context, currentLocation: MyLatLng) {
-        
-        val launcherMultiplePermissions = rememberLauncherForActivityResult(
-            ActivityResultContracts.RequestMultiplePermissions()
-        ) {
-            permissionMap ->
-            val areGranted = permissionMap.values.reduce{
-                accepted, next -> accepted && next
-            }
-
-            if (areGranted) {
-                locationRequired = true;
-                startLocationUpdate();
-                Toast.makeText(context, "Permission granted", Toast.LENGTH_SHORT).show()
-            } else {
-                Toast.makeText(context, "Permission denied", Toast.LENGTH_SHORT).show()
-            }
-        }
-
-        val systemUiController = rememberSystemUiController()
-
-        DisposableEffect(key1 = true, effect = {
-            systemUiController.isSystemBarsVisible = false
-            onDispose {
-                systemUiController.isSystemBarsVisible = true
-            }
-        })
-        
-        LaunchedEffect(key1 = true, block = {
-            fetchWeatherInformation(mainViewModel, currentLocation)
-        })
-
-        LaunchedEffect(key1 = currentLocation, block = {
-            coroutineScope {
-                if (permissions.all{
-                        ContextCompat.checkSelfPermission(context, it) == PackageManager.PERMISSION_GRANTED
-                    }) {
-                    startLocationUpdate()
-                } else {
-                    launcherMultiplePermissions.launch(permissions)
-                }
-            }
-        })
-
-        val gradient = Brush.linearGradient(
-            colors = listOf(Color(colorBg1), Color(colorBg2)),
-            start = Offset(1000f, -1000f),
-            end = Offset(1000f, 1000f)
-        )
-
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(gradient),
-            contentAlignment = Alignment.BottomCenter
-        ) {
-            val screenHeight = LocalConfiguration.current.screenHeightDp.dp
-            val marginTop = screenHeight * 0.1f
-            val marginTopPx = with(LocalDensity.current) { marginTop.toPx()}
-
-            Column (
-                modifier = Modifier
-                    .verticalScroll(rememberScrollState())
-                    .layout { measurable, constraints ->
-                        val placeable = measurable.measure(constraints)
-
-                        layout(placeable.width, placeable.height + marginTopPx.toInt()) {
-                            placeable.placeRelative(0, marginTopPx.toInt())
-                        }
-                    },
-                verticalArrangement = Arrangement.Center,
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                when (mainViewModel.state) {
-                    STATE.LOADING -> {
-                        LoadingSection()
-                    }
-                    STATE.FAILED -> {
-                        ErrorSection(mainViewModel.errorMessage)
-                    }
-                    else -> {
-                        WeatherSection(mainViewModel.weatherResponse)
-                        ForecastSection(mainViewModel.forecastResponse)
-                    }
-                }
-            }
-            
-            FloatingActionButton(
-                onClick = { fetchWeatherInformation(mainViewModel, currentLocation) },
-                modifier = Modifier.padding(bottom = 16.dp)
-            ) {
-                Icon(Icons.Default.Refresh, contentDescription = "Refresh")
-            }
-        }
-    }
-
-
-
-
-
-    @Composable
-    fun ErrorSection(errorMessage: String) {
-        return Column(
-            modifier = Modifier.fillMaxSize(),
-            verticalArrangement = Arrangement.Center,
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Text(text = errorMessage, color = Color.White)
-        }
-    }
-
-    @Composable
-    fun LoadingSection() {
-        return Column(
-            modifier = Modifier.fillMaxSize(),
-            verticalArrangement = Arrangement.Center,
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            CircularProgressIndicator(color = Color.White)
-        }
-    }
 
     private fun initLocationClient() {
         fusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(this)

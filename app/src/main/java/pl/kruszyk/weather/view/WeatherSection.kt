@@ -1,11 +1,18 @@
-import androidx.compose.foundation.layout.*
+package pl.kruszyk.weather.view
+
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.modifier.modifierLocalMapOf
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
@@ -19,6 +26,7 @@ import pl.kruszyk.weather.constant.Const.Companion.na
 import pl.kruszyk.weather.model.weather.WeatherResult
 import pl.kruszyk.weather.utils.Utils.Companion.buildIcon
 import pl.kruszyk.weather.utils.Utils.Companion.timestampToHumanDate
+import kotlin.math.roundToInt
 
 @Composable
 fun WeatherSection(weatherResponse: WeatherResult) {
@@ -35,7 +43,7 @@ fun WeatherSection(weatherResponse: WeatherResult) {
     }
 
 
-    var subTitle = ""
+    val subTitle: String
     val dateVal = (weatherResponse.dt ?:0)
     subTitle = if (dateVal == 0) LOADING
     else timestampToHumanDate(dateVal.toLong(), "dd-MM-yyyy")
@@ -53,20 +61,20 @@ fun WeatherSection(weatherResponse: WeatherResult) {
 
     var temp = ""
     weatherResponse.main?.let{
-        temp = "${it.temp} °C"
+        temp = "${it.temp?.roundToInt()} °C"
     }
 
-    var wind = ""
+    var wind: String
     weatherResponse.wind.let{
-        wind = if(it == null) LOADING else "${it.speed}"
+        wind = if(it == null) LOADING else "${it.speed?.roundToInt()} m/s"
     }
 
-    var clouds = ""
+    var clouds: String
     weatherResponse.clouds.let{
-        clouds = if(it == null) LOADING else "${it.all}"
+        clouds = if(it == null) LOADING else "${it.all} %"
     }
 
-    var snow = ""
+    var snow: String
     weatherResponse.snow.let{
         snow = if(it!!.d1h == null) na else "${it.d1h}"
     }
@@ -116,7 +124,5 @@ fun WeatherTitleSection(text: String, subText: String, fontSize: TextUnit) {
    ) {
        Text(text, fontWeight = FontWeight.Bold, color = Color.White, fontSize = fontSize)
        Text(subText, fontSize = 14.sp, color = Color.White)
-
-
    }
 }

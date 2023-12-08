@@ -1,6 +1,5 @@
 package pl.kruszyk.weather.viewmodel
 
-import android.util.Log
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -47,6 +46,22 @@ class MainViewModel : ViewModel() {
             try {
                 val apiResponse = apiService.getForecast(latLng.lat, latLng.lon)
                 forecastResponse = apiResponse
+                state = STATE.SUCCESS
+            } catch (e: Exception) {
+                errorMessage = e.message!!.toString()
+                state = STATE.FAILED
+            }
+        }
+    }
+
+    fun getWeatherByCity(selectedCity: String) {
+        viewModelScope.launch {
+            state = STATE.LOADING
+            val apiService = RetrofitClient.getInstance()
+
+            try {
+                val apiResponse = apiService.getCityWeather(selectedCity)
+                weatherResponse = apiResponse
                 state = STATE.SUCCESS
             } catch (e: Exception) {
                 errorMessage = e.message!!.toString()

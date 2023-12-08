@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Card
@@ -24,9 +25,10 @@ import pl.kruszyk.weather.constant.Const.Companion.na
 import pl.kruszyk.weather.model.forecast.ForecastResult
 import pl.kruszyk.weather.utils.Utils.Companion.buildIcon
 import pl.kruszyk.weather.utils.Utils.Companion.timestampToHumanDate
+import kotlin.math.roundToInt
 
 @Composable
-fun ForecastSection(forecastResponse: ForecastResult) {
+fun ForecastSection(forecastResponse: ForecastResult, isForecastScreen: Boolean = false) {
     return Column(
         modifier = Modifier.fillMaxSize(),
         verticalArrangement = Arrangement.Center,
@@ -34,17 +36,33 @@ fun ForecastSection(forecastResponse: ForecastResult) {
     ) {
         forecastResponse.list?.let{
             listForecast ->
-            if(listForecast!!.size > 0) {
+            if(listForecast!!.size > 0 && !isForecastScreen) {
                 LazyRow(modifier = Modifier.fillMaxSize()) {
                     items(listForecast!!) {
                         item ->
-                        item.let {
-                            current ->
-                            var temp = ""
-                            var icon = ""
-                            var time = ""
+                        item.let { _ ->
+                            var temp: String
+                            var icon: String
+                            var time: String
 
-                            item.main.let{main -> temp = if (main == null) na else "${main.temp} °C"}
+                            item.main.let{main -> temp = if (main == null) na else "${main.temp?.roundToInt()} °C"}
+                            item.weather.let{weather -> icon = if (weather == null) na else buildIcon(weather[0].icon!!, isBigSize = false)}
+                            item.dt.let{dateTime -> time = if(dateTime == null) na else timestampToHumanDate(dateTime.toLong(), "EEE HH:mm") }
+
+                            ForecastTile(temp = temp, image = icon, time = time)
+                        }
+                    }
+                }
+            } else if(listForecast!!.size > 0) {
+                LazyColumn(modifier = Modifier.fillMaxSize()) {
+                    items(listForecast!!) {
+                            item ->
+                        item.let { _ ->
+                            var temp: String
+                            var icon: String
+                            var time: String
+
+                            item.main.let{main -> temp = if (main == null) na else "${main.temp?.roundToInt()} °C"}
                             item.weather.let{weather -> icon = if (weather == null) na else buildIcon(weather[0].icon!!, isBigSize = false)}
                             item.dt.let{dateTime -> time = if(dateTime == null) na else timestampToHumanDate(dateTime.toLong(), "EEE HH:mm") }
 
